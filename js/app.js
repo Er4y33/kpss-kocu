@@ -497,8 +497,9 @@ function bolumYanlisEkle() {
       <img class="onizleme" src="${D.form.foto}" alt="Seçilen soru fotoğrafı">
       <button class="btn btn-sade bosluk-ust" onclick="fotoKaldir()">Fotoğrafı kaldır</button>
     ` : `
-      <input class="foto-gizli" type="file" id="fotoGirdi" accept="image/*" capture="environment" onchange="fotoSecildi(this)">
+      <input class="foto-gizli" type="file" id="fotoGirdi" accept="image/*" onchange="fotoSecildi(this)">
       <button class="btn btn-ikincil" onclick="document.getElementById('fotoGirdi').click()">Fotoğraf ekle</button>
+      <p class="kucuk" style="margin:8px 0 0">Dokununca telefon sana seçenek sunar: kamerayla çekebilir ya da galeriden seçebilirsin.</p>
     `}
 
     <button class="btn btn-birincil" style="margin-top:24px" onclick="hataKaydet()">Hatayı kaydet</button>

@@ -9,6 +9,7 @@ const ANAHTAR = {
   kartDurum: 'kpss:kartDurum',
   hatalar:   'kpss:hatalar',
   oturumlar: 'kpss:oturumlar',
+  supheli:   'kpss:supheli',
 };
 
 /* ---------------------------- localStorage ---------------------------- */
@@ -40,6 +41,11 @@ const Depo = {
   oturumlarOku:  () => oku(ANAHTAR.oturumlar, []),
   oturumlarYaz:  (d) => yaz(ANAHTAR.oturumlar, d),
 
+  /* Şüpheli kartlar: { kartId: { tarih } }
+     Kitapla çelişen kartlar buraya işaretlenir, tekrar destesinden çıkar. */
+  supheliOku:    () => oku(ANAHTAR.supheli, {}),
+  supheliYaz:    (d) => yaz(ANAHTAR.supheli, d),
+
   hepsiniSil() {
     Object.values(ANAHTAR).forEach((a) => localStorage.removeItem(a));
     return Foto.hepsiniSil();
@@ -52,6 +58,7 @@ const Depo = {
       kartDurum: this.kartDurumOku(),
       hatalar: this.hatalarOku(),
       oturumlar: this.oturumlarOku(),
+      supheli: this.supheliOku(),
     };
   },
 
@@ -60,6 +67,7 @@ const Depo = {
     this.kartDurumYaz(yedek.kartDurum || {});
     this.hatalarYaz(yedek.hatalar || []);
     this.oturumlarYaz(yedek.oturumlar || []);
+    this.supheliYaz(yedek.supheli || {});
   },
 };
 

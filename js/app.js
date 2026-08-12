@@ -8,6 +8,7 @@ const D = {
   kartDurum: {},
   hatalar: [],
   oturumlar: [],
+  supheli: {},
   sekme: 'bugun',
   /* tekrar oturumu */
   deste: null,
@@ -41,6 +42,63 @@ function cubuk(oran, renk) {
   return `<div class="cubuk-dis"><div class="cubuk-ic" style="width:${g}%${renk ? `;background:${renk}` : ''}"></div></div>`;
 }
 
+/* Şüpheli işaretlenen kartlar tekrar destesinden, sayımlardan ve
+   hâkimiyet hesabından çıkarılır. Kuzenin kitabıyla çelişen bir kart
+   gördüğünde işaretler; o kart düzeltilene kadar karşısına çıkmaz. */
+function aktifKartlar() {
+  return KARTLAR.filter((k) => !D.supheli[k.id]);
+}
+
+function aktifDers(ders) {
+  return aktifKartlar().filter((k) => k.ders === ders);
+}
+
+function supheliIsaretle(kartId) {
+  if (!confirm('Bu kartta hata olduğunu düşünüyorsan işaretle. Kart tekrar destesinden çıkar ve Ayarlar ekranındaki listede birikir.')) return;
+  D.supheli[kartId] = { tarih: new Date().toISOString() };
+  Depo.supheliYaz(D.supheli);
+  /* İşaretlenen kart destede duruyorsa çıkar */
+  if (D.deste) {
+    const oncekiUzunluk = D.deste.length;
+    D.deste = D.deste.filter((k) => k.id !== kartId);
+    if (D.deste.length < oncekiUzunluk) D.acik = false;
+  }
+  ciz();
+  duyur('Kart şüpheli olarak işaretlendi.');
+}
+
+function supheliKaldir(kartId) {
+  delete D.supheli[kartId];
+  Depo.supheliYaz(D.supheli);
+  ciz();
+  duyur('Kart tekrar destesine geri alındı.');
+}
+
+/* Şüpheli listesini metin olarak dışa aktar - düzeltilmek üzere paylaşmak için */
+function supheliListeyiPaylas() {
+  const idler = Object.keys(D.supheli);
+  if (idler.length === 0) return;
+  const satirlar = idler.map((id) => {
+    const k = KARTLAR.find((x) => x.id === id);
+    if (!k) return `${id} — (kart bulunamadı)`;
+    return `${k.id} | ${DERS_AD[k.ders]} / ${k.konu}\nSORU: ${k.on}\nCEVAP: ${k.arka}\n`;
+  });
+  const metin = `KPSS Koçu — şüpheli kartlar (${idler.length} adet)\n\n` + satirlar.join('\n');
+
+  if (navigator.share) {
+    navigator.share({ title: 'Şüpheli kartlar', text: metin }).catch(() => {});
+    return;
+  }
+  const dosya = new Blob([metin], { type: 'text/plain' });
+  const url = URL.createObjectURL(dosya);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `supheli-kartlar-${bugun()}.txt`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  duyur('Liste indirildi. Düzeltilmesi için gönderebilirsin.');
+}
+
 function sonNGun(kayitlar, n) {
   const sinir = new Date();
   sinir.setDate(sinir.getDate() - n);
@@ -56,6 +114,7 @@ function baslat() {
   D.kartDurum = Depo.kartDurumOku();
   D.hatalar = Depo.hatalarOku();
   D.oturumlar = Depo.oturumlarOku();
+  D.supheli = Depo.supheliOku();
   kaliciDepoIste();
   ciz();
 }
@@ -90,7 +149,7 @@ function ekranBugun() {
   const vade = {};
   let toplam = 0;
   DERSLER.forEach((d) => {
-    vade[d] = vadesiGelenler(derseGore(d), D.kartDurum).length;
+    vade[d] = vadesiGelenler(aktifDers(d), D.kartDurum).length;
     toplam += vade[d];
   });
 
@@ -109,7 +168,7 @@ function ekranBugun() {
     net: son.reduce((a, o) => a + o.net, 0),
   } : null;
 
-  const genel = hakimiyet(KARTLAR, D.kartDurum);
+  const genel = hakimiyet(aktifKartlar(), D.kartDurum);
 
   return `
     <div class="yuzey koyu">
@@ -167,7 +226,7 @@ function ekranBugun() {
 
 /* ===================== EKRAN: TEKRAR ===================== */
 function tekrarBaslat(ders) {
-  const havuz = ders ? derseGore(ders) : KARTLAR;
+  const havuz = ders ? aktifDers(ders) : aktifKartlar();
   D.deste = karistir(vadesiGelenler(havuz, D.kartDurum));
   D.secilenDers = ders || 'karisik';
   D.sira = 0;
@@ -200,7 +259,7 @@ function ekranTekrar() {
   if (!D.deste) {
     const vade = {};
     let toplam = 0;
-    DERSLER.forEach((d) => { vade[d] = vadesiGelenler(derseGore(d), D.kartDurum).length; toplam += vade[d]; });
+    DERSLER.forEach((d) => { vade[d] = vadesiGelenler(aktifDers(d), D.kartDurum).length; toplam += vade[d]; });
 
     return `
       <p class="aciklama-yazi">Hangi dersi tekrar edeceksin? Karışık seçersen tüm derslerin vadesi gelen kartları birlikte sorulur.</p>
@@ -214,7 +273,7 @@ function ekranTekrar() {
           <span class="ders-cizgi" style="background:${DERS_RENK[d]}"></span>
           <span class="analiz-sol">
             <span class="ders-ad" style="display:block">${DERS_AD[d]}</span>
-            <span class="kucuk">${derseGore(d).length} kart toplam</span>
+            <span class="kucuk">${aktifDers(d).length} kart toplam</span>
           </span>
           <span class="ders-sag">
             <span class="ders-sayi ${vade[d] === 0 ? 'bos' : ''}" style="display:block">${vade[d]}</span>
@@ -266,6 +325,9 @@ function ekranTekrar() {
         <div class="bolum-baslik" style="margin:0">CEVAP</div>
         <p class="cevap-yazi">${kacir(kart.arka)}</p>
       </div>
+      <button class="supheli-btn" onclick="supheliIsaretle('${kart.id}')">
+        ⚑ Bu kartta hata var
+      </button>
       <div class="btn-sira bosluk-ust">
         <button class="btn btn-olumsuz" onclick="cevapla(false)">Bilemedim</button>
         <button class="btn btn-olumlu" onclick="cevapla(true)">Bildim</button>
@@ -580,11 +642,12 @@ function dersAc(ders) {
 
 function ekranKonular() {
   const kutuSayac = [0, 0, 0, 0, 0];
-  KARTLAR.forEach((k) => {
+  const aktif = aktifKartlar();
+  aktif.forEach((k) => {
     const d = D.kartDurum[k.id];
     kutuSayac[(d ? d.kutu : 1) - 1] += 1;
   });
-  const toplam = KARTLAR.length;
+  const toplam = aktif.length || 1;
 
   return `
     <div class="bolum-baslik" style="margin-top:0">KUTU DAĞILIMI</div>
@@ -606,10 +669,14 @@ function ekranKonular() {
 
     <div class="bolum-baslik">DERSLER</div>
     ${DERSLER.map((d) => {
-      const kartlar = derseGore(d);
+      const kartlar = aktifDers(d);
       const oran = hakimiyet(kartlar, D.kartDurum);
       const konular = konulariCikar(d)
-        .map((k) => ({ ad: k.ad, adet: k.liste.length, oran: hakimiyet(k.liste, D.kartDurum) }))
+        .map((k) => {
+          const liste = k.liste.filter((x) => !D.supheli[x.id]);
+          return { ad: k.ad, adet: liste.length, oran: hakimiyet(liste, D.kartDurum) };
+        })
+        .filter((k) => k.adet > 0)
         .sort((a, b) => a.oran - b.oran);
 
       return `
@@ -673,12 +740,16 @@ function yedekDosyaSecildi(girdi) {
 async function hepsiniSil() {
   if (!confirm('Tüm kart ilerlemesi, hata kayıtları ve test sonuçları silinecek. Bu geri alınamaz. Devam edilsin mi?')) return;
   await Depo.hepsiniSil();
+  D.supheli = {};
   baslat();
   duyur('Tüm kayıtlar silindi.');
 }
 
 function ekranAyarlar() {
   const calisilan = Object.keys(D.kartDurum).length;
+  const supheliListesi = Object.keys(D.supheli)
+    .map((id) => KARTLAR.find((k) => k.id === id))
+    .filter(Boolean);
 
   return `
     <div class="bolum-baslik" style="margin-top:0">DURUM</div>
@@ -687,6 +758,26 @@ function ekranAyarlar() {
       <div class="satir"><span class="satir-etiket">Çalışılmış kart</span><span class="satir-deger">${calisilan}</span></div>
       <div class="satir"><span class="satir-etiket">Hata kaydı</span><span class="satir-deger">${D.hatalar.length}</span></div>
       <div class="satir"><span class="satir-etiket">Test kaydı</span><span class="satir-deger">${D.oturumlar.length}</span></div>
+      <div class="satir"><span class="satir-etiket">Şüpheli işaretli</span><span class="satir-deger">${Object.keys(D.supheli).length}</span></div>
+    </div>
+
+    <div class="bolum-baslik">ŞÜPHELİ KARTLAR</div>
+    <div class="yuzey">
+      <p class="kucuk" style="margin:0">Kartları bir yapay zeka yazdı, ders kitabından kopyalanmadı. Kitabınla çelişen bir kart görürsen tekrar ekranındaki <strong>⚑ Bu kartta hata var</strong> düğmesine bas. Kart destesinden çıkar, burada birikir. Çelişki varsa <strong>kitabın haklıdır.</strong></p>
+      ${supheliListesi.length === 0 ? `
+        <p class="kucuk" style="margin:12px 0 0">Henüz işaretlenmiş kart yok.</p>
+      ` : `
+        ${supheliListesi.map((k) => `
+          <div class="supheli-satir">
+            <span class="ders-cizgi" style="background:${DERS_RENK[k.ders]}"></span>
+            <span class="analiz-sol">
+              <span class="kayit-konu" style="display:block">${kacir(k.on)}</span>
+              <span class="kucuk">${DERS_AD[k.ders]} / ${kacir(k.konu)} · ${k.id}</span>
+            </span>
+            <button class="btn btn-sade supheli-geri" onclick="supheliKaldir('${k.id}')">Geri al</button>
+          </div>`).join('')}
+        <button class="btn btn-ikincil bosluk-ust" onclick="supheliListeyiPaylas()">Listeyi paylaş</button>
+      `}
     </div>
 
     <div class="bolum-baslik">YEDEKLEME</div>

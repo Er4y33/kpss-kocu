@@ -2,7 +2,7 @@
    Uygulama dosyalarını telefona kaydeder; ilk açılıştan sonra internet
    gerekmez. Yeni sürüm yayınlandığında SURUM numarasını artırmak yeterli. */
 
-const SURUM = 'kpss-v1';
+const SURUM = 'kpss-v2';
 const DOSYALAR = [
   './',
   './index.html',

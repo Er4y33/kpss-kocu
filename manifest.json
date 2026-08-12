@@ -1,0 +1,17 @@
+{
+  "name": "KPSS Koçu",
+  "short_name": "KPSS Koçu",
+  "description": "KPSS hata defteri ve aralıklı tekrar sistemi",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1B2431",
+  "theme_color": "#1B2431",
+  "lang": "tr",
+  "icons": [
+    { "src": "ikon/ikon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "ikon/ikon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "ikon/ikon-maskeli.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
